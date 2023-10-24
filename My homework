@@ -23,7 +23,7 @@ CREATE TABLE Albums
 (
     album_id serial primary key,
     album_name VARCHAR(60) not null,
-    release_year DATE check (DATE >= '1960-01-01')
+    release_year DATE
 );
 
 CREATE TABLE Album_Artist
@@ -37,14 +37,14 @@ CREATE TABLE Compilation
 (
     compilation_id serial primary key,
     compilation_name VARCHAR(60) not null unique,
-    release_year DATE check (DATE >= '1960-01-01')
+    release_year DATE
 );
 
 CREATE TABLE Tracks
 (
     track_id serial primary key,
     track_name VARCHAR(60) not null unique,
-    duration integer check (integer <= '00-10-00'),
+    duration integer,
     album_id INT not null references Albums(album_id)
 );
 
@@ -53,6 +53,13 @@ CREATE TABLE Compilation_Tracks
     compilation_id INT not null references Compilation(compilation_id),
     track_id INT not null references Tracks(track_id),
     primary key(compilation_id, track_id)
+);
+
+create table Compilation_Artists
+(
+	compilation_id INT not null references Compilation(compilation_id),
+	artist_id INT not null references Artists(artist_id),
+	primary key(compilation_id, artist_id)
 );
 
 # Задание №1
@@ -70,28 +77,28 @@ INSERT INTO genres (genre_name) VALUES
     ('Heavy Metal'),
     ('Hardcore');
 
-INSERT INTO artists (artist_name, genre_id)
+INSERT INTO artists (artist_name)
 VALUES
-    ('Jimi Hendrix', 1),
-    ('AC/DC', 1),
-    ('Metallica', 2),
-    ('Agnostic Front', 3);
+    ('Jimi Hendrix'),
+    ('AC/DC'),
+    ('Metallica'),
+    ('Agnostic Front');
 
-INSERT INTO albums (album_name, release_year, artist_id)
+INSERT INTO albums (album_name, release_year)
 VALUES 
-  ('Are You Experienced', '2019', 1),
-  ('Back in Black', '2020', 2),
-  ('Master of Puppets', '2019', 3),
-  ('Warriors', '2007', 4);
+  ('Are You Experienced', '2019-01-01'),
+  ('Back in Black', '2020-01-01'),
+  ('Master of Puppets', '2019-01-01'),
+  ('Warriors', '2007-01-01');
 
 INSERT INTO tracks (track_name, duration, album_id)
 VALUES 
-    ('Purple Haze', '00:02:50', 1),
-    ('Hells Bells', '00:05:10', 2),
-    ('Nothing Else Matters', '00:06:29', 3),
-    ('Enter Sandman', '00:05:29', 3),
-    ('Addiction', '00:02:20', 4),
-    ('For my family', '00:02:22', 4);
+    ('Purple Haze', 170, 1),
+    ('Hells Bells', 310, 2),
+    ('Nothing Else Matters', 399, 3),
+    ('Enter Sandman', 329, 3),
+    ('Addiction', 140, 4),
+    ('For my family', 142, 4);
 
 INSERT INTO compilation (compilation_name, release_year)
 VALUES
@@ -99,7 +106,8 @@ VALUES
     ('High Voltage', '1976-02-07'),
     ('Metallica: The Black Album', '1991-05-04'),
     ('Raw Unleashed', '2001-05-02');
-   
+
+
  # Задание №2
 
 # Написать SELECT-запросы, которые выведут информацию согласно инструкциям ниже.
@@ -111,24 +119,27 @@ VALUES
 # Название треков, которые содержат слово «мой» или «my».
 
 
-select track_name as name, max(duration) as max_duration
-from tracks;
+SELECT track_name as name, MAX(duration) as max_duration
+FROM tracks
+GROUP BY track_name;
 
 select track_name as name, duration
 from tracks
-where duration >= '00:03:30'
+where duration >= 210
 
-select compilation_name as name
-from compilation
-where release_year between 2018 and 2020
+SELECT compilation_name as name
+FROM compilation
+WHERE release_year BETWEEN '2018-01-01' AND '2020-12-31';
 
-select artist_name as name 
-from artists
-where artist_name like '%'
+
+SELECT artist_name as name
+FROM artists
+WHERE artist_name ~ '^[A-Za-z]+$';
 
 select track_name as name
 from tracks
 where track_name like '%my%'
+
 
 # Задание №3
 
@@ -142,17 +153,18 @@ where track_name like '%my%'
 
 
 SELECT g.genre_name AS genre, COUNT(a.artist_id) AS NumberOfArtists
-FROM genres g
-LEFT JOIN artists a ON g.genre_id = a.genre_id
+FROM genres_artists ga
+LEFT JOIN artists a ON ga.artist_id = a.artist_id
+LEFT JOIN genres g ON ga.genre_id = g.genre_id
 GROUP BY g.genre_name
 ORDER BY NumberOfArtists DESC;
 
-select count(t.track_id) as tracks_quantity
-from tracks t 
-left join albums a on t.album_id  = a.album_id 
-where a.release_year = '2019' or a.release_year = '2020'
+SELECT COUNT(t.track_id) AS tracks_quantity
+FROM tracks t
+LEFT JOIN albums a ON t.album_id = a.album_id
+WHERE a.release_year >= '2019-01-01' AND a.release_year <= '2020-12-31';
 
-SELECT a.album_name, AVG(EXTRACT(EPOCH FROM t.duration)) AS average_duration
+SELECT a.album_name, ROUND(AVG(EXTRACT(EPOCH FROM INTERVAL '1 second' * t.duration))) AS average_duration
 FROM albums a
 LEFT JOIN tracks t ON a.album_id = t.album_id
 GROUP BY a.album_name
@@ -163,13 +175,11 @@ FROM artists
 WHERE artist_id NOT IN (
     SELECT artist_id
     FROM albums
-    WHERE release_year = '2020'
+    WHERE release_year BETWEEN '2020-01-01' AND '2020-12-31'
 );
 
 SELECT c.compilation_name
 FROM compilation c
 INNER JOIN compilation_artists ca ON c.compilation_id = ca.compilation_id
-WHERE ca.artist_name = 'Agnostic Front';
-
-
-
+inner join artists a on ca.artist_id = a.artist_id 
+WHERE a.artist_name = 'Agnostic Front';
